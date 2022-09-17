@@ -25,13 +25,13 @@ extern int CloseSig      = 1;        // закрытие по сигналу
 extern int MinOpen       = 45;       // минуты для открытия
 extern int Slip          = 30;       // реквот
 extern int Magic         = 123;      // магик
-extern double QuantityElimLots = 6;     // количество лотов для усриднения
+extern double QuantityElimLots = 6;     // количество лотов для усреднения
 datetime t=0;
 #define SELL 0
 #define BUY 1
 int MAGICNumber = Magic;
 //+------------------------------------------------------------------+
-//| Expert initialization function                                   |
+//| Expert initialization function.                                   |
 //+------------------------------------------------------------------+
 int OnInit()
   {
@@ -45,14 +45,14 @@ int OnInit()
    return(INIT_SUCCEEDED);
   }
 //+------------------------------------------------------------------+
-//| Expert deinitialization function                                 |
+//| Expert deinitialization function.                                 |
 //+------------------------------------------------------------------+
 void OnDeinit(const int reason)
   {
    Comment("");
   }
 //+------------------------------------------------------------------+
-//|                                                                  |
+//| Function for opening orders. Old version.                                                                |
 //+------------------------------------------------------------------+
 int PutOrder(int type,double price)
   {
@@ -81,13 +81,10 @@ int PutOrder(int type,double price)
    r=OrderSend(NULL,type,Lots,NormalizeDouble(price,_Digits),Slip,sl,tp,"",Magic,0,clr);
    return r;
   }
-//+------------------------------------------------------------------+
-//|                                                                  |
-//+------------------------------------------------------------------+
 
 
 //+------------------------------------------------------------------+
-//|                                                                  |
+//|Convert Minutes in bars for M15 timeframe.                                                                 |
 //+------------------------------------------------------------------+
 int CalculateBars(int RangeInMinuts)
   {
@@ -101,11 +98,10 @@ struct CandleSize
   };
 CandleSize OpenOrderCandle = {0,0};
 //+------------------------------------------------------------------+
-//|                                                                  |
+//| Function for control Close time in period MinOpen.                                                                 |
 //+------------------------------------------------------------------+
 bool TimeClose()
   {
-   int CountBars = 0;
    if(OpenOrderCandle.ClosePrice != 0 && OpenOrderCandle.OpenPrice != 0)
       for(int i = 1; i <= CalculateBars(MinOpen); i++)
         {
@@ -119,7 +115,7 @@ bool TimeClose()
   }
 
 //+------------------------------------------------------------------+
-//|                                                                  |
+//|Function for control time session.                                                                  |
 //+------------------------------------------------------------------+
 bool TimeSession(int aStartHour,int aStartMinute,int aStopHour,int aStopMinute,datetime aTimeCur)
   {
@@ -149,7 +145,7 @@ bool TimeSession(int aStartHour,int aStartMinute,int aStopHour,int aStopMinute,d
   }
 
 //+------------------------------------------------------------------+
-//|                                                                  |
+//|Function to control whether the order is closed or not.                                                             |
 //+------------------------------------------------------------------+
 bool IsOrderClose(int ticket)
   {
@@ -165,7 +161,7 @@ bool IsOrderClose(int ticket)
   }
 
 //+------------------------------------------------------------------+
-//|                                                                  |
+//|The function returns the last ticket in the list of orders history.                                                                  |
 //+------------------------------------------------------------------+
 int LastOrderOP()
   {
@@ -178,7 +174,7 @@ int LastOrderOP()
   }
 
 //+------------------------------------------------------------------+
-//|                                                                  |
+//|Function for calculate take profit and stop loss                                                                  |
 //+------------------------------------------------------------------+
 double CalculatePnL(double FirstPrice, double SecondPrice, double Lot, bool OP)
   {
@@ -194,19 +190,19 @@ double CalculatePnL(double FirstPrice, double SecondPrice, double Lot, bool OP)
   }
 
 //+------------------------------------------------------------------+
-//|                                                                  |
+//| Finding a range in points between two prices.                                                                 |
 //+------------------------------------------------------------------+
 int PointsToRange(double Price1, double Price2, double PPoint)
   {
    if(Price1>Price2)
-      return((int)NormalizeDouble((Price1-Price2)/Point, 0));
+      return((int)NormalizeDouble((Price1-Price2)/PPoint, 0));
    if(Price1<Price2)
-      return ((int)NormalizeDouble((Price2-Price1)/Point, 0));
+      return ((int)NormalizeDouble((Price2-Price1)/PPoint, 0));
    return 0;
   }
 
 //+------------------------------------------------------------------+
-//|                                                                  |
+//| Function for finding the elimination price                                                                 |
 //+------------------------------------------------------------------+
 double FindEliminationPrice()
   {
@@ -232,6 +228,9 @@ double FindEliminationPrice()
    return 0;
   }
 
+//+------------------------------------------------------------------+
+//| Function for opening an order for averaging.                                                                 |
+//+------------------------------------------------------------------+
 int  MasTickets[50];
 int OpenEliminationOrder(int LastTicket, int FirstTicket)
   {
@@ -285,12 +284,12 @@ int OpenEliminationOrder(int LastTicket, int FirstTicket)
                            return LastTicket;
                           }
                         else
-                           Print(" Error: First order is not modify!\nError code: ", GetLastError());
+                           Print(" Error: First order is not modified!\nError code: ", GetLastError());
                        }
 
                     }
                   else
-                     Print(" Error: Last elimination order is not modify!\nError code: ", GetLastError());
+                     Print(" Error: Last averaged order is not modified!\nError code: ", GetLastError());
                  }
            }
          else
@@ -321,11 +320,11 @@ int OpenEliminationOrder(int LastTicket, int FirstTicket)
                               return LastTicket;
                              }
                            else
-                              Print(" Error: First order is not modify!\nError code: ", GetLastError());
+                              Print(" Error: First order is not modified!\nError code: ", GetLastError());
 
                           }
                         else
-                           Print(" Error: Last elimination order is not modify!\nError code: ", GetLastError());
+                           Print(" Error: Last averaged order is not modified!\nError code: ", GetLastError());
                        }
                     }
               }
@@ -365,7 +364,6 @@ int OpenEliminationOrder(int LastTicket, int FirstTicket)
             double NewElimPrice = 0;
             double LastOrdersLot = 0;
             double LastOrderOpenPrice = 0;
-            double PrevElimPrice = 0;
             for(int i = QuantityOrders-1; i != -1; i--)
               {
 
@@ -398,7 +396,7 @@ int OpenEliminationOrder(int LastTicket, int FirstTicket)
                               NewElimPrice = minstoplevel+OrderOpenPrice()-((OrderOpenPrice()-LastOrderOpenPrice)/Point*OrderLots()/(LastOrdersLot+OrderLots()))*Point+(Ask-Bid);
                              }
                         if(OrderModify(NewTicket, OrderOpenPrice(), 0, NormalizeDouble(NewElimPrice+3*Point, Digits), 0, clrRed) != true)
-                           Print("Error: New Order is not modify!");
+                           Print("Error: New Order is not modified!");
 
                        }
                      else
@@ -411,7 +409,7 @@ int OpenEliminationOrder(int LastTicket, int FirstTicket)
                     {
 
                      if(OrderModify(MasTickets[i], OrderOpenPrice(), 0, NormalizeDouble(NewElimPrice, Digits), 0, clrRed) != true)
-                        Print("Error: Order:", MasTickets[i], " is not modify!");
+                        Print("Error: Order:", MasTickets[i], " is not modified!");
                     }
                  }
                else
@@ -420,7 +418,7 @@ int OpenEliminationOrder(int LastTicket, int FirstTicket)
                     {
 
                      if(OrderModify(MasTickets[i], OrderOpenPrice(), 0, NormalizeDouble(NewElimPrice, Digits), 0, clrRed) != true)
-                        Print("Error: Order:", MasTickets[i], " is not modify!");
+                        Print("Error: Order:", MasTickets[i], " is not modified!");
                      if(i == 0)
                         return NewTicket;
                     }
@@ -434,7 +432,7 @@ int OpenEliminationOrder(int LastTicket, int FirstTicket)
   }
 
 //+------------------------------------------------------------------+
-//|                                                                  |
+//|Open Buy Order.                                                                  |
 //+------------------------------------------------------------------+
 int BuyOrder(int TakeProfit, int StopLoss, double VVolume)
   {
@@ -463,7 +461,7 @@ int BuyOrder(int TakeProfit, int StopLoss, double VVolume)
   }
 
 //+------------------------------------------------------------------+
-//|                                                                  |
+//|Open Sell Order.                                                                  |
 //+------------------------------------------------------------------+
 int SellOrder(int TakeProfit, int StopLoss, double VVolume)
   {
@@ -493,7 +491,7 @@ int SellOrder(int TakeProfit, int StopLoss, double VVolume)
 //+------------------------------------------------------------------+
 
 //+------------------------------------------------------------------+
-//|                                                                  |
+//|Removes unnecessary tickets from the Mastickets array.                                                                  |
 //+------------------------------------------------------------------+
 void ControlMasTickets()
   {
@@ -507,7 +505,7 @@ void ControlMasTickets()
   }
 
 //+------------------------------------------------------------------+
-//|                                                                  |
+//| Correcting the sequence of tickets in the Mastickets array.                                                                 |
 //+------------------------------------------------------------------+
 void RepairMasTickets()
   {
@@ -589,7 +587,7 @@ void RepairMasTickets()
   }
 
 //+------------------------------------------------------------------+
-//| Expert tick function                                             |
+//| Expert tick function.                                             |
 //+------------------------------------------------------------------+
 int Ticket = -1;
 bool IsFirstOrder = true;
@@ -757,7 +755,7 @@ void OnTick()
 
      }
    else
-      Comment("It's not M15! Please change timeframe.");
+      Comment("It's not the M15 timeframe! Please change the timeframe.");
 
 
   }
