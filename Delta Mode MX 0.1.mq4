@@ -25,7 +25,7 @@ extern int CloseSig      = 1;        // закрытие по сигналу
 extern int MinOpen       = 45;       // минуты для открытия
 extern int Slip          = 30;       // реквот
 extern int Magic         = 123;      // магик
-extern double QuantityElimLots = 6;     // количество лотов для усреднения
+extern double QuantityElimLots = 6;  // количество лотов для усреднения
 datetime t=0;
 #define SELL 0
 #define BUY 1
@@ -234,7 +234,7 @@ double FindEliminationPrice()
 int  MasTickets[50];
 int OpenEliminationOrder(int LastTicket, int FirstTicket)
   {
-   //Print("Starting OpenEliminationOrder()...");
+//Print("Starting OpenEliminationOrder()...");
    double QuantityLots = 0;
    for(int i = 0; i < 50; i++)
      {
@@ -248,9 +248,9 @@ int OpenEliminationOrder(int LastTicket, int FirstTicket)
             break;
         }
      }
-   //Print("QuantityLots: ", QuantityLots);
-   //Print("LastTicket: ", LastTicket);
-   //Print("FirstTicket: ", FirstTicket);
+//Print("QuantityLots: ", QuantityLots);
+//Print("LastTicket: ", LastTicket);
+//Print("FirstTicket: ", FirstTicket);
    double minstoplevel = MarketInfo(Symbol(), MODE_STOPLEVEL);
    if(LastTicket == FirstTicket)
      {
@@ -344,7 +344,7 @@ int OpenEliminationOrder(int LastTicket, int FirstTicket)
                if(QuantityOrders != 0)
                   break;
            }
-           //Print("QuantityOrders: ", QuantityOrders);
+         //Print("QuantityOrders: ", QuantityOrders);
          if(QuantityOrders >= 2)
            {
             if(OrderSelect(MasTickets[0], SELECT_BY_TICKET) == true)
@@ -405,7 +405,7 @@ int OpenEliminationOrder(int LastTicket, int FirstTicket)
                         return -1;
                        }
                     }
-                    if(OrderSelect(MasTickets[i], SELECT_BY_TICKET) == true)
+                  if(OrderSelect(MasTickets[i], SELECT_BY_TICKET) == true)
                     {
 
                      if(OrderModify(MasTickets[i], OrderOpenPrice(), 0, NormalizeDouble(NewElimPrice, Digits), 0, clrRed) != true)
@@ -660,7 +660,7 @@ void OnTick()
                           }
               }
         }
-        /*
+      /*
       Print("Indicator Buy: ", buy);
       Print("Indicator Sell:", sell);
       Print("TimeClose(): ", TimeClose());
