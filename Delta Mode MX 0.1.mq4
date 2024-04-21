@@ -25,7 +25,7 @@ extern int CloseSig      = 1;        // закрытие по сигналу
 extern int MinOpen       = 45;       // минуты для открытия
 extern int Slip          = 30;       // реквот
 extern int Magic         = 123;      // магик
-extern double QuantityElimLots = 6;  // количество лотов для усреднения
+const double QuantityElimLots = 6;  // количество лотов для усреднения
 datetime t=0;
 #define SELL 0
 #define BUY 1
@@ -78,7 +78,7 @@ int PutOrder(int type,double price)
          tp=NormalizeDouble(price+TakeProfit1*_Point,_Digits);
      }
 
-   r=OrderSend(NULL,type,Lots,NormalizeDouble(price,_Digits),Slip,sl,tp,"",Magic,0,clr);
+   r=OrderSend(NULL,type,Lots,NormalizeDouble(price,_Digits),Slip,0,tp,"",Magic,0,clr);
    return r;
   }
 
@@ -248,6 +248,10 @@ int OpenEliminationOrder(int LastTicket, int FirstTicket)
             break;
         }
      }
+   if(QuantityLots > QuantityElimLots)
+     {
+      return -1;
+     }
 //Print("QuantityLots: ", QuantityLots);
 //Print("LastTicket: ", LastTicket);
 //Print("FirstTicket: ", FirstTicket);
@@ -309,13 +313,13 @@ int OpenEliminationOrder(int LastTicket, int FirstTicket)
                      LastTicketOpenPrice = OrderOpenPrice();
                      int Range = PointsToRange(FirstTicketOpenPrice, LastTicketOpenPrice, Point);
 
-                     if(OrderModify(OrderTicket(), OrderOpenPrice(), 0, NormalizeDouble(OrderOpenPrice()-((Range/2)+3)*Point+minstoplevel+(Ask-Bid), Digits), 0, clrRed) == true)
+                     if(OrderModify(OrderTicket(), OrderOpenPrice(), 0, NormalizeDouble(OrderOpenPrice()-(Range/2+3)*Point+minstoplevel-(Ask-Bid), Digits), 0, clrRed) == true)
                        {
                         MasTickets[1] = LastTicket;
                         if(OrderSelect(FirstTicket, SELECT_BY_TICKET) == true)
                           {
 
-                           if(OrderModify(OrderTicket(), OrderOpenPrice(), 0, NormalizeDouble((Range/2)*Point+minstoplevel+OrderOpenPrice()+(Ask-Bid), Digits), 0, clrRed) == true)
+                           if(OrderModify(OrderTicket(), OrderOpenPrice(), 0, NormalizeDouble((OrderOpenPrice()+(Range/2)*Point+minstoplevel)-(Ask-Bid), Digits), 0, clrRed) == true)
                              {
                               return LastTicket;
                              }
@@ -388,12 +392,13 @@ int OpenEliminationOrder(int LastTicket, int FirstTicket)
                         int LastRange = PointsToRange(LastElimPrice, OrderOpenPrice(), Point);
                         if(OrderType() == OP_BUY)
                           {
-                           NewElimPrice = minstoplevel+OrderOpenPrice()+LastRange*OrderLots()/(LastOrdersLot+OrderLots())*Point+(Ask-Bid);
+                           NewElimPrice = minstoplevel+OrderOpenPrice()+LastRange*OrderLots()/(LastOrdersLot+OrderLots()*2)*Point+(Ask-Bid);
                           }
                         else
                            if(OrderType() == OP_SELL)
                              {
-                              NewElimPrice = minstoplevel+OrderOpenPrice()-((OrderOpenPrice()-LastOrderOpenPrice)/Point*OrderLots()/(LastOrdersLot+OrderLots()))*Point+(Ask-Bid);
+                             NewElimPrice = minstoplevel+OrderOpenPrice()-LastRange*OrderLots()/(LastOrdersLot+OrderLots()/2)*Point-(Ask-Bid);
+                              //NewElimPrice = minstoplevel+OrderOpenPrice()-((OrderOpenPrice()-LastOrderOpenPrice)/Point*OrderLots()/(LastOrdersLot+OrderLots()))*Point-(Ask-Bid);
                              }
                         if(OrderModify(NewTicket, OrderOpenPrice(), 0, NormalizeDouble(NewElimPrice+3*Point, Digits), 0, clrRed) != true)
                            Print("Error: New Order is not modified!");
@@ -591,6 +596,7 @@ void RepairMasTickets()
 //+------------------------------------------------------------------+
 int Ticket = -1;
 bool IsFirstOrder = true;
+datetime LastClosedBar = 0;
 void OnTick()
   {
    double minstoplevel = MarketInfo(Symbol(), MODE_STOPLEVEL);
@@ -705,7 +711,7 @@ void OnTick()
            }
       //Comment("\n Time Close: ", TimeClose());
 
-      if(OrderSelect(Ticket, SELECT_BY_TICKET) == true)
+      if(OrderSelect(Ticket, SELECT_BY_TICKET) == true && LastClosedBar != Time[1])
         {
          int ElimTicket;
          if(OrderType() == OP_BUY && OrderOpenPrice()+(Ask-Bid) > Close[1] && (OpenOrderCandle.OpenPrice != Open[1] && OpenOrderCandle.ClosePrice != Close[1]))
@@ -714,6 +720,14 @@ void OnTick()
               {
                ElimTicket = OpenEliminationOrder(Ticket, Ticket);
                Ticket = ElimTicket;
+               if(Ticket != -1)
+                 {
+                  LastClosedBar = Time[1];
+                 }
+               else
+               {
+                  //Print("OpenEliminationOrder error: This Order is not opened!");
+               }
               }
             else
                if(MasTickets[0] != -1)
@@ -724,6 +738,14 @@ void OnTick()
                        {
                         ElimTicket = OpenEliminationOrder(MasTickets[i-1], MasTickets[0]);
                         Ticket = ElimTicket;
+                        if(Ticket != -1)
+                          {
+                           LastClosedBar = Time[1];
+                          }
+                        else
+                        {
+                           //Print("OpenEliminationOrder error: This Order is not opened!");
+                        }
                         break;
                        }
                     }
@@ -736,6 +758,14 @@ void OnTick()
                  {
                   ElimTicket = OpenEliminationOrder(Ticket, Ticket);
                   Ticket = ElimTicket;
+                  if(Ticket != -1)
+                    {
+                     LastClosedBar = Time[1];
+                    }
+                  else
+                  {
+                     //Print("OpenEliminationOrder error: This Order is not opened!");
+                  }
                  }
                else
                   if(MasTickets[0] != -1)
@@ -746,6 +776,14 @@ void OnTick()
                           {
                            ElimTicket = OpenEliminationOrder(MasTickets[i-1], MasTickets[0]);
                            Ticket = ElimTicket;
+                           if(Ticket != -1)
+                             {
+                              LastClosedBar = Time[1];
+                             }
+                           else
+                           {
+                             //Print("OpenEliminationOrder error: This Order is not opened!");
+                           }
                            break;
                           }
                        }
