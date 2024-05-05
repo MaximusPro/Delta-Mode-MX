@@ -694,7 +694,6 @@ void OnTick()
 
          MaxMinFractal.Set(BuffFractals, ElimDirectionTrend);
          CJAVal JSFractal, JSIndex;
-         CJAVal JSFractal1, JSIndex1;
          
          if(ElimDirectionTrend == UP)
          {
