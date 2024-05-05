@@ -32,7 +32,6 @@ datetime t=0;
 int MAGICNumber = Magic;
 #include <Analytics/TrendFractals.mqh>
 #include <Arrays/ArrayString.mqh>
-#include <InfoOrders.mqh>
 #include <JAson.mqh>
 TrendFractals *MaxMinFractal;
 //+------------------------------------------------------------------+
@@ -695,23 +694,32 @@ void OnTick()
 
          MaxMinFractal.Set(BuffFractals, ElimDirectionTrend);
          CJAVal JSFractal, JSIndex;
+         CJAVal JSFractal1, JSIndex1;
          
          if(ElimDirectionTrend == UP)
+         {
             JSFractal["MaxFractal"] = IntegerToString(MaxMinFractal.GetMaxFractal(), 0, ' ');
+         }
          else
             if(ElimDirectionTrend == DOWN)
+            {
                JSFractal["MinFractal"] = IntegerToString(MaxMinFractal.GetMaxFractal(), 0, ' ');
+            }
          JSIndex["Index_"+IntegerToString(ElimIndex, 0, ' ')].Add(JSFractal);
          string FileName = "AnalyticsLog" + TimeToString(TimeDate, TIME_DATE) + ".txt";
          
-         
          Print("JASONData.Total: ", JASONData.Total());
+         CJAVal JString;
          for(int i = 0; i < JASONData.Total(); i++)
          {
-            JSIndex["Index_"+IntegerToString(ElimIndex, 0, ' ')].Add(JASONData[i]);
+            JString.Deserialize(JASONData[i]);
+            JSIndex["Index_"+IntegerToString(ElimIndex, 0, ' ')].Add(JString);
+            JString.Clear();
          }
+         
          if(WriteFile(FileName, JSIndex.Serialize()))
             Print("WriteFile Succesfull!");
+         Print(JSIndex.Serialize());
          ElimIndex++;
          JASONData.DeleteRange(0, JASONData.Total()-1);
          TimeFirstElimBar = 0;
