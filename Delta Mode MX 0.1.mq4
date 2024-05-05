@@ -30,6 +30,11 @@ datetime t=0;
 #define SELL 0
 #define BUY 1
 int MAGICNumber = Magic;
+#include <Analytics/TrendFractals.mqh>
+#include <Arrays/ArrayString.mqh>
+#include <InfoOrders.mqh>
+#include <JAson.mqh>
+TrendFractals *MaxMinFractal;
 //+------------------------------------------------------------------+
 //| Expert initialization function.                                   |
 //+------------------------------------------------------------------+
@@ -39,7 +44,9 @@ int OnInit()
    /*for(int i = 0; i < 50; i++)
      {
       MasTickets[i] = -1;
+      
      }*/
+     MaxMinFractal = new TrendFractals();
    Comment("");
 //---
    return(INIT_SUCCEEDED);
@@ -232,6 +239,10 @@ double FindEliminationPrice()
 //| Function for opening an order for averaging.                                                                 |
 //+------------------------------------------------------------------+
 int  MasTickets[50];
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 int OpenEliminationOrder(int LastTicket, int FirstTicket)
   {
 //Print("Starting OpenEliminationOrder()...");
@@ -284,7 +295,8 @@ int OpenEliminationOrder(int LastTicket, int FirstTicket)
                        {
                         if(OrderModify(OrderTicket(), OrderOpenPrice(), 0, NormalizeDouble((OrderOpenPrice()-(Range/2)*Point+minstoplevel)+(Ask-Bid), Digits), 0, clrRed) == true)
                           {
-
+                           TimeFirstElimBar = Time[0];
+                           ElimDirectionTrend = DOWN;
                            return LastTicket;
                           }
                         else
@@ -321,6 +333,8 @@ int OpenEliminationOrder(int LastTicket, int FirstTicket)
 
                            if(OrderModify(OrderTicket(), OrderOpenPrice(), 0, NormalizeDouble((OrderOpenPrice()+(Range/2)*Point+minstoplevel)-(Ask-Bid), Digits), 0, clrRed) == true)
                              {
+                             TimeFirstElimBar = Time[0];
+                             ElimDirectionTrend = UP;
                               return LastTicket;
                              }
                            else
@@ -397,7 +411,7 @@ int OpenEliminationOrder(int LastTicket, int FirstTicket)
                         else
                            if(OrderType() == OP_SELL)
                              {
-                             NewElimPrice = minstoplevel+OrderOpenPrice()-LastRange*OrderLots()/(LastOrdersLot+OrderLots()/2)*Point-(Ask-Bid);
+                              NewElimPrice = minstoplevel+OrderOpenPrice()-LastRange*OrderLots()/(LastOrdersLot+OrderLots()/2)*Point-(Ask-Bid);
                               //NewElimPrice = minstoplevel+OrderOpenPrice()-((OrderOpenPrice()-LastOrderOpenPrice)/Point*OrderLots()/(LastOrdersLot+OrderLots()))*Point-(Ask-Bid);
                              }
                         if(OrderModify(NewTicket, OrderOpenPrice(), 0, NormalizeDouble(NewElimPrice+3*Point, Digits), 0, clrRed) != true)
@@ -597,6 +611,35 @@ void RepairMasTickets()
 int Ticket = -1;
 bool IsFirstOrder = true;
 datetime LastClosedBar = 0;
+CArrayString *JASONData = new CArrayString();
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+double ShowTicketTakeProfit(int TradeTicket)
+  {
+   if(OrderSelect(TradeTicket, SELECT_BY_TICKET) == true)
+     {
+      return OrderTakeProfit();
+     }
+   return 0;
+  }
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+double ShowTicketOpenPrice(int TradeTicket)
+  {
+   if(OrderSelect(TradeTicket, SELECT_BY_TICKET) == true)
+     {
+      return OrderOpenPrice();
+     }
+   return 0;
+  }
+int ElimDirectionTrend = 0;
+double ElimTakeProfit;
+double ElimOpenPrice;
+datetime TimeFirstElimBar = 0;
 void OnTick()
   {
    double minstoplevel = MarketInfo(Symbol(), MODE_STOPLEVEL);
@@ -621,7 +664,39 @@ void OnTick()
         }
 
       RepairMasTickets();
-
+      if(MasTickets[0] == -1 && JASONData.Total() != 0)
+        {
+        int IndexBars = 0;
+        double BuffFractals[];
+        Print("TimeFirstElimBar: ", TimeFirstElimBar);
+        for(int i = 0; TimeFirstElimBar <= Time[i]; i++)
+        {
+            IndexBars++;
+        }
+        ArrayResize(BuffFractals, IndexBars, 0);
+        for(int i = 0; i < IndexBars; i++)
+        {
+         if(ElimDirectionTrend == UP)
+         BuffFractals[i] = iFractals(_Symbol,PERIOD_CURRENT, MODE_UPPER, i);
+         else if(ElimDirectionTrend == DOWN)
+         BuffFractals[i] = iFractals(_Symbol,PERIOD_CURRENT, MODE_LOWER, i);
+        }
+         
+         MaxMinFractal.Set(BuffFractals, ElimDirectionTrend);
+         CJAVal JSFractal;
+         if(ElimDirectionTrend == UP)
+         JSFractal["MaxFractal"] = IntegerToString(MaxMinFractal.GetMaxFractal(), 0, ' ');
+         else if(ElimDirectionTrend == DOWN)
+         JSFractal["MinFractal"] = IntegerToString(MaxMinFractal.GetMaxFractal(), 0, ' ');
+         WriteFile("TotalLog.txt", JSFractal.Serialize());
+         Print("JASONData.Total: ", JASONData.Total());
+         for(int i = 0; i < JASONData.Total(); i++)
+            if(WriteFile("TotalLog.txt", JASONData[i]))
+               Print("WriteFile succesfull!");
+         JASONData.DeleteRange(0, JASONData.Total()-1);
+         TimeFirstElimBar = 0;
+         ElimDirectionTrend = 0;
+        }
       double delta=Close[1]-Open[1];
       bool buy = delta>=Delta1*_Point && delta<Delta2*_Point;
       bool sell = delta<=-Delta1*_Point && delta>-Delta2*_Point;
@@ -716,18 +791,38 @@ void OnTick()
          int ElimTicket;
          if(OrderType() == OP_BUY && OrderOpenPrice()+(Ask-Bid) > Close[1] && (OpenOrderCandle.OpenPrice != Open[1] && OpenOrderCandle.ClosePrice != Close[1]))
            {
+           ElimDirectionTrend = DOWN;
             if(MasTickets[0] == -1)
               {
+               /*if(JASONData.Total() == 0)
+               {
+                  string JSTicket = WriteOpenOrderOnJason(Ticket);
+                  JASONData.Add(JSTicket);
+                  ElimTakeProfit = ShowTicketTakeProfit(Ticket);
+                  ElimOpenPrice = ShowTicketOpenPrice(Ticket);
+               }*/
                ElimTicket = OpenEliminationOrder(Ticket, Ticket);
+               TimeFirstElimBar = Time[0];
+               string JSTicket = WriteOpenOrderOnJason(MasTickets[0]);
+               JASONData.Add(JSTicket);
+               ElimTakeProfit = ShowTicketTakeProfit(MasTickets[0]);
+               ElimOpenPrice = ShowTicketOpenPrice(MasTickets[0]);
                Ticket = ElimTicket;
+               if(IsOrderClose(Ticket) != true)
+                 {
+                  string JSTicket = WriteOpenOrderOnJason(Ticket);
+                  JASONData.Add(JSTicket);
+                  ElimTakeProfit = ShowTicketTakeProfit(Ticket);
+                  ElimOpenPrice = ShowTicketOpenPrice(Ticket);
+                 }
                if(Ticket != -1)
                  {
                   LastClosedBar = Time[1];
                  }
                else
-               {
+                 {
                   //Print("OpenEliminationOrder error: This Order is not opened!");
-               }
+                 }
               }
             else
                if(MasTickets[0] != -1)
@@ -738,14 +833,21 @@ void OnTick()
                        {
                         ElimTicket = OpenEliminationOrder(MasTickets[i-1], MasTickets[0]);
                         Ticket = ElimTicket;
+                        if(IsOrderClose(Ticket) != true)
+                          {
+                           string JSTicket = WriteOpenOrderOnJason(Ticket);
+                           JASONData.Add(JSTicket);
+                           ElimTakeProfit = ShowTicketTakeProfit(Ticket);
+                           ElimOpenPrice = ShowTicketOpenPrice(Ticket);
+                          }
                         if(Ticket != -1)
                           {
                            LastClosedBar = Time[1];
                           }
                         else
-                        {
+                          {
                            //Print("OpenEliminationOrder error: This Order is not opened!");
-                        }
+                          }
                         break;
                        }
                     }
@@ -754,18 +856,26 @@ void OnTick()
          else
             if(OrderType() == OP_SELL && OrderOpenPrice()+(Ask-Bid) < Close[1] && (OpenOrderCandle.OpenPrice != Open[1] && OpenOrderCandle.ClosePrice != Close[1]))
               {
+              ElimDirectionTrend = UP;
                if(MasTickets[0] == -1)
                  {
                   ElimTicket = OpenEliminationOrder(Ticket, Ticket);
                   Ticket = ElimTicket;
+                  if(IsOrderClose(Ticket) != true)
+                    {
+                     string JSTicket = WriteOpenOrderOnJason(Ticket);
+                     JASONData.Add(JSTicket);
+                     ElimTakeProfit = ShowTicketTakeProfit(Ticket);
+                     ElimOpenPrice = ShowTicketOpenPrice(Ticket);
+                    }
                   if(Ticket != -1)
                     {
                      LastClosedBar = Time[1];
                     }
                   else
-                  {
+                    {
                      //Print("OpenEliminationOrder error: This Order is not opened!");
-                  }
+                    }
                  }
                else
                   if(MasTickets[0] != -1)
@@ -776,14 +886,21 @@ void OnTick()
                           {
                            ElimTicket = OpenEliminationOrder(MasTickets[i-1], MasTickets[0]);
                            Ticket = ElimTicket;
+                           if(IsOrderClose(Ticket) != true)
+                             {
+                              string JSTicket = WriteOpenOrderOnJason(Ticket);
+                              JASONData.Add(JSTicket);
+                              ElimTakeProfit = ShowTicketTakeProfit(Ticket);
+                              ElimOpenPrice = ShowTicketOpenPrice(Ticket);
+                             }
                            if(Ticket != -1)
                              {
                               LastClosedBar = Time[1];
                              }
                            else
-                           {
-                             //Print("OpenEliminationOrder error: This Order is not opened!");
-                           }
+                             {
+                              //Print("OpenEliminationOrder error: This Order is not opened!");
+                             }
                            break;
                           }
                        }
@@ -796,5 +913,60 @@ void OnTick()
       Comment("It's not the M15 timeframe! Please change the timeframe.");
 
 
+  }
+//+------------------------------------------------------------------+
+string WriteOpenOrderOnJason(int Ticket)
+  {
+   CJAVal InfoPositionJS;
+   if(OrderSelect(Ticket, SELECT_BY_TICKET) == true)
+     {
+      InfoPositionJS["ID"] = OrderTicket();
+      InfoPositionJS["OrderOpenPrice"] = OrderOpenPrice();
+      InfoPositionJS["OrderLots"] = OrderLots();
+      InfoPositionJS["TakeProfit"] = OrderTakeProfit();
+      InfoPositionJS["StopLoss"] = OrderStopLoss();
+      if(OrderType() == OP_BUY)
+      InfoPositionJS["OrderType"] = "OP_BUY";
+      else if(OrderType() == OP_SELL)
+      InfoPositionJS["OrderType"] = "OP_SELL";
+      InfoPositionJS["OrderOpenTime"] = TimeToStr(OrderOpenTime(), TIME_DATE|TIME_MINUTES|TIME_SECONDS);
+     }
+
+
+   return InfoPositionJS.Serialize();
+
+
+
+   return NULL;
+  }
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+bool WriteFile(string FileName, string Data)
+  {
+
+   int FileHandle;
+   if(FileIsExist(FileName, 0))
+     {
+      FileHandle = FileOpen(FileName, FILE_WRITE | FILE_READ| FILE_TXT);
+      FileSeek(FileHandle, 0, SEEK_END);
+     }
+   else
+     {
+      FileHandle = FileOpen(FileName, FILE_WRITE | FILE_TXT);
+     }
+   if(FileWrite(FileHandle, Data) != 0)
+     {
+      FileClose(FileHandle);
+      return true;
+     }
+   else
+     {
+      Print("FileError: ", GetLastError());
+      FileClose(FileHandle);
+      return false;
+     }
+   return true;
   }
 //+------------------------------------------------------------------+
