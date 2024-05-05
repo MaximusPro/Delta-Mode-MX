@@ -44,9 +44,9 @@ int OnInit()
    /*for(int i = 0; i < 50; i++)
      {
       MasTickets[i] = -1;
-      
+
      }*/
-     MaxMinFractal = new TrendFractals();
+   MaxMinFractal = new TrendFractals();
    Comment("");
 //---
    return(INIT_SUCCEEDED);
@@ -333,8 +333,8 @@ int OpenEliminationOrder(int LastTicket, int FirstTicket)
 
                            if(OrderModify(OrderTicket(), OrderOpenPrice(), 0, NormalizeDouble((OrderOpenPrice()+(Range/2)*Point+minstoplevel)-(Ask-Bid), Digits), 0, clrRed) == true)
                              {
-                             TimeFirstElimBar = Time[0];
-                             ElimDirectionTrend = UP;
+                              TimeFirstElimBar = Time[0];
+                              ElimDirectionTrend = UP;
                               return LastTicket;
                              }
                            else
@@ -640,11 +640,21 @@ int ElimDirectionTrend = 0;
 double ElimTakeProfit;
 double ElimOpenPrice;
 datetime TimeFirstElimBar = 0;
+datetime TimeDate = NULL;
+int CurrentDay = NULL;
+int CurrentYear = NULL;
+int ElimIndex = 0;
 void OnTick()
   {
    double minstoplevel = MarketInfo(Symbol(), MODE_STOPLEVEL);
    if(Period() == PERIOD_M15)
      {
+      if(TimeDate == NULL)
+        {
+         CurrentDay = TimeDayOfYear(TimeCurrent());
+         CurrentYear = TimeYear(TimeCurrent());
+         TimeDate = TimeCurrent();
+        }
       //Print("OpenOrderCandle.OpenPrice: ", OpenOrderCandle.OpenPrice);
       //Print("OpenOrderCandle.ClosePrice: ", OpenOrderCandle.ClosePrice);
       if(IsFirstOrder == true)
@@ -666,36 +676,61 @@ void OnTick()
       RepairMasTickets();
       if(MasTickets[0] == -1 && JASONData.Total() != 0)
         {
-        int IndexBars = 0;
-        double BuffFractals[];
-        Print("TimeFirstElimBar: ", TimeFirstElimBar);
-        for(int i = 0; TimeFirstElimBar <= Time[i]; i++)
-        {
+         int IndexBars = 0;
+         double BuffFractals[];
+         Print("TimeFirstElimBar: ", TimeFirstElimBar);
+         for(int i = 0; TimeFirstElimBar <= Time[i]; i++)
+           {
             IndexBars++;
-        }
-        ArrayResize(BuffFractals, IndexBars, 0);
-        for(int i = 0; i < IndexBars; i++)
-        {
-         if(ElimDirectionTrend == UP)
-         BuffFractals[i] = iFractals(_Symbol,PERIOD_CURRENT, MODE_UPPER, i);
-         else if(ElimDirectionTrend == DOWN)
-         BuffFractals[i] = iFractals(_Symbol,PERIOD_CURRENT, MODE_LOWER, i);
-        }
-         
+           }
+         ArrayResize(BuffFractals, IndexBars, 0);
+         for(int i = 0; i < IndexBars; i++)
+           {
+            if(ElimDirectionTrend == UP)
+               BuffFractals[i] = iFractals(_Symbol,PERIOD_CURRENT, MODE_UPPER, i);
+            else
+               if(ElimDirectionTrend == DOWN)
+                  BuffFractals[i] = iFractals(_Symbol,PERIOD_CURRENT, MODE_LOWER, i);
+           }
+
          MaxMinFractal.Set(BuffFractals, ElimDirectionTrend);
-         CJAVal JSFractal;
+         CJAVal JSFractal, JSIndex;
+         
          if(ElimDirectionTrend == UP)
-         JSFractal["MaxFractal"] = IntegerToString(MaxMinFractal.GetMaxFractal(), 0, ' ');
-         else if(ElimDirectionTrend == DOWN)
-         JSFractal["MinFractal"] = IntegerToString(MaxMinFractal.GetMaxFractal(), 0, ' ');
-         WriteFile("TotalLog.txt", JSFractal.Serialize());
+            JSFractal["MaxFractal"] = IntegerToString(MaxMinFractal.GetMaxFractal(), 0, ' ');
+         else
+            if(ElimDirectionTrend == DOWN)
+               JSFractal["MinFractal"] = IntegerToString(MaxMinFractal.GetMaxFractal(), 0, ' ');
+         JSIndex["Index_"+IntegerToString(ElimIndex, 0, ' ')].Add(JSFractal);
+         string FileName = "AnalyticsLog" + TimeToString(TimeDate, TIME_DATE) + ".txt";
+         
+         
          Print("JASONData.Total: ", JASONData.Total());
          for(int i = 0; i < JASONData.Total(); i++)
-            if(WriteFile("TotalLog.txt", JASONData[i]))
-               Print("WriteFile succesfull!");
+         {
+            JSIndex["Index_"+IntegerToString(ElimIndex, 0, ' ')].Add(JASONData[i]);
+         }
+         if(WriteFile(FileName, JSIndex.Serialize()))
+            Print("WriteFile Succesfull!");
+         ElimIndex++;
          JASONData.DeleteRange(0, JASONData.Total()-1);
          TimeFirstElimBar = 0;
          ElimDirectionTrend = 0;
+         if(CurrentDay < TimeDayOfYear(TimeCurrent()) && CurrentYear == TimeYear(TimeCurrent()))
+           {
+            CurrentDay = TimeDayOfYear(TimeCurrent());
+            CurrentYear = TimeYear(TimeCurrent());
+            TimeDate = TimeCurrent();
+            ElimIndex = 0;
+           }
+         else
+            if(CurrentDay > TimeDayOfYear(TimeCurrent()) && CurrentYear != TimeYear(TimeCurrent()))
+              {
+               CurrentDay = TimeDayOfYear(TimeCurrent());
+               CurrentYear = TimeYear(TimeCurrent());
+               TimeDate = TimeCurrent();
+               ElimIndex = 0;
+              }
         }
       double delta=Close[1]-Open[1];
       bool buy = delta>=Delta1*_Point && delta<Delta2*_Point;
@@ -791,7 +826,7 @@ void OnTick()
          int ElimTicket;
          if(OrderType() == OP_BUY && OrderOpenPrice()+(Ask-Bid) > Close[1] && (OpenOrderCandle.OpenPrice != Open[1] && OpenOrderCandle.ClosePrice != Close[1]))
            {
-           ElimDirectionTrend = DOWN;
+            ElimDirectionTrend = DOWN;
             if(MasTickets[0] == -1)
               {
                /*if(JASONData.Total() == 0)
@@ -856,7 +891,7 @@ void OnTick()
          else
             if(OrderType() == OP_SELL && OrderOpenPrice()+(Ask-Bid) < Close[1] && (OpenOrderCandle.OpenPrice != Open[1] && OpenOrderCandle.ClosePrice != Close[1]))
               {
-              ElimDirectionTrend = UP;
+               ElimDirectionTrend = UP;
                if(MasTickets[0] == -1)
                  {
                   ElimTicket = OpenEliminationOrder(Ticket, Ticket);
@@ -922,13 +957,14 @@ string WriteOpenOrderOnJason(int Ticket)
      {
       InfoPositionJS["ID"] = OrderTicket();
       InfoPositionJS["OrderOpenPrice"] = OrderOpenPrice();
-      InfoPositionJS["OrderLots"] = OrderLots();
-      InfoPositionJS["TakeProfit"] = OrderTakeProfit();
-      InfoPositionJS["StopLoss"] = OrderStopLoss();
+      InfoPositionJS["OrderLots"] = NormalizeDouble(OrderLots(), 2);
+      InfoPositionJS["TakeProfit"] = NormalizeDouble(OrderTakeProfit(), 3);
+      InfoPositionJS["StopLoss"] = NormalizeDouble(OrderStopLoss(), 3);
       if(OrderType() == OP_BUY)
-      InfoPositionJS["OrderType"] = "OP_BUY";
-      else if(OrderType() == OP_SELL)
-      InfoPositionJS["OrderType"] = "OP_SELL";
+         InfoPositionJS["OrderType"] = "OP_BUY";
+      else
+         if(OrderType() == OP_SELL)
+            InfoPositionJS["OrderType"] = "OP_SELL";
       InfoPositionJS["OrderOpenTime"] = TimeToStr(OrderOpenTime(), TIME_DATE|TIME_MINUTES|TIME_SECONDS);
      }
 
@@ -958,6 +994,7 @@ bool WriteFile(string FileName, string Data)
      }
    if(FileWrite(FileHandle, Data) != 0)
      {
+      FileWrite(FileHandle, "");
       FileClose(FileHandle);
       return true;
      }
