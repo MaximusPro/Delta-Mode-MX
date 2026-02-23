@@ -11,17 +11,14 @@
 ## Installation
 
 1. Download the repository:
-
-   ```bash
-   git clone https://github.com/MaximusPro/Delta-Mode-MX.git
+```bash
+git clone https://github.com/MaximusPro/Delta-Mode-MX.git
    ```
 2. Copy files to the correct MetaTrader 4 folders:
 ```bash
 Delta Mode MX 0.1.mq4
 ```
-3. Restart MetaTrader 4  
-or right-click inside the Navigator panel → **Refresh**.
-
+3. Restart MetaTrader 4  or right-click inside the Navigator panel → **Refresh**.
 4. Drag the **Delta Mode MX 0.1** expert advisor onto any chart.  
 Make sure the **AutoTrading** button in the toolbar is enabled (green).
 
