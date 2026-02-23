@@ -38,21 +38,11 @@ Make sure the **AutoTrading** button in the toolbar is enabled (green).
 | `ColorNegative`               | clrRed        | Color for negative delta                                               |
 | `ColorZero`                   | clrGray       | Color for zero / very small delta                                      |
 
-## How to Use
+## Usage Recommendations
 
-1. Attach the indicator to the chart
-2. Works best in combination with Market Profile / Order Book / Footprint (if available)
-3. Look for **divergences** between price and delta
-4. Pay attention to **absorption** zones (large delta against the price direction)
-5. Use cumulative delta to assess overall market sentiment
-
-## Roadmap (Planned Features)
-
-- [ ] Version 0.2 — support for real Futures volume (via plugin)
-- [ ] Version 0.3 — intra-bar cluster display (mini-footprint)
-- [ ] Version 1.0 — session profiles (Asia, London, New York)
-- [ ] Auto-detection of broker volume type
-- [ ] Delta export to CSV for analysis in Python / R
+- **Backtest first** — run in Strategy Tester with modeling quality ≥ 99%
+- Test on a **demo account** for at least 1–3 months before going live
+- Regularly monitor actual spread, slippage and broker execution quality
 
 ## Author
 
