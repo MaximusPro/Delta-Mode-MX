@@ -6,7 +6,7 @@
 
 - MetaTrader 4 (build 600+)
 - Broker providing tick volume or real volume (most ECN/STP brokers)
-- Recommended timeframes: M1–H1 for best accuracy
+- Recommended timeframes: M15
 
 ## Installation
 
