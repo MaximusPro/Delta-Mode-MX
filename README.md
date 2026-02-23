@@ -1,17 +1,7 @@
 # Delta Mode MX
 
-**Delta Mode MX** is a volume delta and cluster analysis indicator for MetaTrader 4.  
-It displays the difference between buy and sell volume (delta) on each bar, as well as cumulative delta and other metrics in a convenient visual format.
+**Delta Mode MX** is a modification from Delta strategy on M15 timeframes.
 
-## Screenshots
-
-(Add 2–4 screenshots here later — ideally on different timeframes and scales)
-
-<!-- 
-![Delta Mode MX on H1](screenshots/delta-h1.png)
-![Indicator settings](screenshots/settings.png)
-![Cumulative delta](screenshots/cumdelta.png)
--->
 
 ## Key Features
 
