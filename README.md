@@ -1,6 +1,6 @@
 # Delta Mode MX
 
-**Delta Mode MX** is a modification from Delta strategy on M15 timeframes.
+**Delta Mode MX** is a modification from Delta strategy on M15 timeframes which uses avrage.
 
 ## Requirements
 
@@ -10,12 +10,20 @@
 
 ## Installation
 
-1. Download the file `Delta Mode MX 0.1.mq4` (or a newer version)
-2. Open MetaTrader 4 → **File → Open Data Folder**
-3. Go to folder `MQL4 → Indicators`
-4. Copy the `.mq4` file there (or compiled `.ex4` if available)
-5. Restart the terminal or right-click in Navigator → **Refresh**
-6. Drag the indicator onto any chart
+1. Download the repository:
+
+   ```bash
+   git clone https://github.com/MaximusPro/Delta-Mode-MX.git
+   ```
+2. Copy files to the correct MetaTrader 4 folders:
+```bash
+Delta Mode MX 0.1.mq4
+```
+3. Restart MetaTrader 4  
+or right-click inside the Navigator panel → **Refresh**.
+
+4. Drag the **Delta Mode MX 0.1** expert advisor onto any chart.  
+Make sure the **AutoTrading** button in the toolbar is enabled (green).
 
 ## Input Parameters
 
