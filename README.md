@@ -2,18 +2,6 @@
 
 **Delta Mode MX** is a modification from Delta strategy on M15 timeframes.
 
-
-## Key Features
-
-- Displays **bid/ask delta** for each bar
-- Color indication of bars (positive / negative delta)
-- Cumulative Delta line
-- Multiple display modes: histogram / numbers / colored candles
-- Supports both tick volume and real volume (if provided by broker)
-- Configurable small delta noise filter
-- Absorption and exhaustion zones (optional)
-- Lightweight and fast — does not slow down the terminal even on M1
-
 ## Requirements
 
 - MetaTrader 4 (build 600+)
