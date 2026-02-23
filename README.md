@@ -1,6 +1,6 @@
 # Delta Mode MX
 
-**Delta Mode MX** is a modification from Delta strategy on M15 timeframes which uses avrage.
+**Delta Mode MX** is a modification from Delta strategy on M15 timeframes. It's strategy without indicators wich use orders averaging.
 
 ## Requirements
 
